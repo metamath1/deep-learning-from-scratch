@@ -28,11 +28,11 @@
 |ch07/deep_convnet2.py      | Convolution3 클래스를 이용하여 CONV층이 2개인 CONVNET을 구성한 파일  |
 |ch07/train_deepconvnet2.py | deep_convnet2.py에서 구성한 CONVNET을 훈련 시키는 파일 |
 
-추가된 부분
+추가된 부분:
 CNN 역전파 수식을 그대로 구현하여 작성된 CONV층 클래스인 Convolution3 클래스를 
 common/layers.py에 추가
 
-소스 코드 해설은 https://metamath1.github.io/에 올리도록 하겠습니다.(아직 안올림)
+소스 코드 해설은 https://metamath1.github.io/ 에 올리도록 하겠습니다.
 
 
 
