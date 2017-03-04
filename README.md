@@ -6,7 +6,9 @@
 
 ---
 
-이 저장소는 『[밑바닥부터 시작하는 딥러닝](http://www.hanbit.co.kr/store/books/look.php?p_code=B8475831198)』(한빛미디어, 2017)의 지원 사이트입니다.
+이 저장소는 『[밑바닥부터 시작하는 딥러닝](http://www.hanbit.co.kr/store/books/look.php?p_code=B8475831198)』(한빛미디어, 2017)의 
+7장 CNN부분의 부족한 코드를 추가로 구현한 소스를 제공하고 있습니다.
+자세한 해설은 https://metamath1.github.io/ 를 참고하세요.
 
 
 ## 파일 구성
