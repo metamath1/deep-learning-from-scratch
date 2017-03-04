@@ -1,14 +1,18 @@
 # coding: utf-8
 import numpy as np
+import common.conv2d as cv2
 from common.functions import *
 from common.util import im2col, col2im
-
+import time
 
 class Relu:
     def __init__(self):
         self.mask = None
 
     def forward(self, x):
+        #mask의 모양
+        #Relu1 (100, 30, 24, 24)
+        #Relu2 (100, 100)
         self.mask = (x <= 0)
         out = x.copy()
         out[self.mask] = 0
@@ -226,7 +230,7 @@ class Convolution:
         self.x = x
         self.col = col
         self.col_W = col_W
-
+        
         return out
 
     def backward(self, dout):
@@ -242,7 +246,196 @@ class Convolution:
 
         return dx
 
+##################################################################################
+# 기본적인 convolution 연산을 이용하여 구현한 CONV층 부분 시작
+##################################################################################
+class Convolution2:
+    """
+    식빵 형태의 4차원 어레이 형태를 그대로 두고 정말 있는 그대로 컨벌루션해서 순,역전파를 수행하는 방식으로 구현
+    단 4차원 어레이에 대한 컨벌루션을 수행함에 있어 for루프 4개가 중첩되는 상황을 피하기위해
+    어레이를 적층시켜 데이터 반복을 통해 for 루프를 2개만 사용함
+    메모리 낭비도 심하고 속도도 느림(for 4개 중첩보다는 비교할 수 없이 빠르긴하지만....
+    """
+    def __init__(self, W, b, stride=1, pad=0):
+        #stride는 1만 지원
+        if self.stride != 1 :
+            raise Exception("stride는 1만 지원합니다.")
+        
+        self.W = W
+        self.b = b
+        self.stride = stride
+        self.pad = pad
+        
+        # 중간 데이터（backward 시 사용）
+        self.x = None   
+        
+        # 가중치와 편향 매개변수의 기울기
+        self.dW = None
+        self.db = None
 
+        #
+        self.debug = False
+        
+    def forward(self, x):
+        self.x = x
+        
+        N,  C,  H,  W = x.shape
+        FN, C, FH, FW = self.W.shape
+        
+        x2 = np.concatenate(x.repeat(FN, axis=0), axis=0)[np.newaxis, :]
+        W2 = np.concatenate(self.W, axis=0)[np.newaxis, :].repeat(N, axis=0).reshape(1, -1, FH, FW)
+        
+        if self.debug :
+            start = time.time()    
+        
+        out = cv2.conv2d(x2, W2, sumdepth=False)
+        
+        if self.debug :
+            end = time.time()
+            print("forward : %f[s]" %(end-start))
+        
+        o_shape = out.shape
+        
+        out = out.reshape(int(o_shape[1]/C), C, *o_shape[2:]).sum(axis=1).reshape(N, FN, *o_shape[2:])+self.b.reshape(FN, 1, 1) 
+        
+        return out
+        
+    def backward(self, dout):
+        N,  C,  H,  W = self.x.shape
+        FN, C, FH, FW = self.W.shape
+        x_shape = self.x.shape
+        w_shape = self.W.shape 
+        
+        ##############################
+        # dC/dB
+        ##############################
+        if self.debug :
+            start = time.time()    
+        
+        self.db = np.sum(dout, axis=(2,3)) #한판을 다 더한다
+        self.db = np.sum(self.db, axis=0)  #미니배치끼리 다 더한다
+        
+        if self.debug :
+            end = time.time()
+            print("dC/dB : %f[s]" %(end-start))
+        
+        ##############################
+        # dC/dW
+        ##############################
+        if self.debug :
+            start = time.time()    
+        
+        x2 = np.concatenate(self.x.repeat(FN, axis=0), axis=0)[np.newaxis,:]
+        dout2 = np.concatenate(dout.repeat(C,axis=1), axis=0)[np.newaxis,:]
+
+        self.dW = cv2.conv2d(x2, dout2, sumdepth=False)
+        dw_shape = self.dW.shape
+        self.dW = self.dW.reshape(N, -1, *dw_shape[2:]).sum(axis=0).reshape(FN, -1, *dw_shape[2:])
+        
+        if self.debug :
+            end = time.time()
+            print("dC/dW : %f[s]" %(end-start))
+        
+        ##############################
+        # W*delta
+        ##############################
+        if self.debug :
+            start = time.time()    
+        
+        W2 = np.concatenate(np.concatenate(self.W.transpose(1,0,2,3), axis=0)[np.newaxis,:].repeat(N, axis=0), axis=0)[np.newaxis,:]
+        dout2 = np.concatenate(dout.repeat(C, axis=0), axis=0)[np.newaxis,:]
+        
+        dx = cv2.conv2d(W2, dout2, mode='full', flip=True, sumdepth=False)
+        dx_shape = dx.shape
+        dx = dx.reshape(int(dx_shape[1]/FN), FN, *dx_shape[2:]).sum(axis=1).reshape(N, -1, *dx_shape[2:])
+        
+        if self.debug :
+            end = time.time()
+            print("W*delta : %f[s]" %(end-start))
+        
+        return dx        
+        
+class Convolution3:
+    def __init__(self, W, b, stride=1, pad=0):
+        self.W = W
+        self.b = b
+        self.stride = stride
+        self.pad = pad
+        
+        # 중간 데이터（backward 시 사용）
+        self.x = None   
+        
+        # 가중치와 편향 매개변수의 기울기
+        self.dW = None
+        self.db = None
+        
+        self.debug = False
+
+    def forward(self, x):
+        self.x = x
+        out = cv2.fconv2d(x, self.W, stride=self.stride, pad=self.pad)
+        
+        return out
+        
+    def backward(self, dout):
+        N,  C,  H,  W  = self.x.shape
+        FN, FC, FH, FW = self.W.shape
+        DN, DC, DH, DW = dout.shape
+        
+        ##############################
+        # dC/dB
+        ##############################
+        if self.debug :
+            start = time.time()    
+            
+        #CONV2, CONV3 모두 같음
+        self.db = np.sum(dout, axis=(2,3)) #한판을 다 더한다
+        self.db = np.sum(self.db, axis=0)  #미니배치끼리 다 더한다
+        
+        if self.debug :
+            end = time.time()
+            print("dC/dB : %f[s]" %(end-start))
+
+        
+        ##############################
+        # dC/dW , x * dout
+        ##############################
+        if self.debug :
+            start = time.time()    
+        
+        #flatten 
+        Xcol = np.asarray(np.hsplit(im2col(self.x.transpose(1,0,2,3), DH, DW, self.stride, self.pad),  N)).reshape(-1, DH*DW)
+        Dcol = np.asarray(np.hsplit(im2col(dout.transpose(1,0,2,3)  , DH, DW, self.stride, self.pad), DN)).reshape(-1, DH*DW).T
+        #Xcol 과 Dcol을 미니배치 수만큼 돌면서 부분부분 곱함.
+        r = int(Xcol.shape[0] / N) 
+        c = int(Dcol.shape[1] / N)
+        self.dW = np.asarray([np.dot(Xcol[i*r:i*r+r,:], Dcol[:,i*c:i*c+c]) for i in range(N)]).sum(axis=0)
+        dWH, dWW = self.dW.shape
+        self.dW = self.dW.T.reshape(dWW, -1, FH, FW)
+        
+        if self.debug :
+            end = time.time()
+            print("dC/dW : %f[s]" %(end-start))
+            
+        ##############################
+        # W*delta for backpropogation
+        ##############################
+        if self.debug :
+            start = time.time()   
+        
+        Wt = self.W.transpose(1,0,2,3)
+        dx = cv2.fconv2d(dout, Wt, 'full', True, self.stride, self.pad)
+        
+        if self.debug :
+            end = time.time()
+            print("W*delta : %f[s]" %(end-start))
+        return dx        
+        
+##################################################################################
+# 기본적인 convolution 연산을 이용하여 구현한 CONV층 부분 끝
+##################################################################################        
+
+        
 class Pooling:
     def __init__(self, pool_h, pool_w, stride=1, pad=0):
         self.pool_h = pool_h
@@ -280,5 +473,4 @@ class Pooling:
         
         dcol = dmax.reshape(dmax.shape[0] * dmax.shape[1] * dmax.shape[2], -1)
         dx = col2im(dcol, self.x.shape, self.pool_h, self.pool_w, self.stride, self.pad)
-        
         return dx

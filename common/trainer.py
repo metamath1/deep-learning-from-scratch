@@ -1,8 +1,9 @@
 # coding: utf-8
-import sys, os
+import sys, os, time
 sys.path.append(os.pardir)  # 부모 디렉터리의 파일을 가져올 수 있도록 설정
 import numpy as np
 from common.optimizer import *
+from common.progress import progressbar
 
 class Trainer:
     """신경망 훈련을 대신 해주는 클래스
@@ -36,6 +37,9 @@ class Trainer:
         self.train_acc_list = []
         self.test_acc_list = []
 
+        #epoch 시간 측정을 위한 변수
+        self.ep_start = 0
+
     def train_step(self):
         batch_mask = np.random.choice(self.train_size, self.batch_size)
         x_batch = self.x_train[batch_mask]
@@ -46,7 +50,8 @@ class Trainer:
         
         loss = self.network.loss(x_batch, t_batch)
         self.train_loss_list.append(loss)
-        if self.verbose: print("train loss:" + str(loss))
+        
+        #if self.verbose: print("train loss:" + str(loss))
         
         if self.current_iter % self.iter_per_epoch == 0:
             self.current_epoch += 1
@@ -63,12 +68,26 @@ class Trainer:
             self.train_acc_list.append(train_acc)
             self.test_acc_list.append(test_acc)
 
-            if self.verbose: print("=== epoch:" + str(self.current_epoch) + ", train acc:" + str(train_acc) + ", test acc:" + str(test_acc) + " ===")
+            if self.verbose: 
+                end = time.time()
+                print("epoch:" + str(self.current_epoch) + ", train acc:" + str(train_acc) + ", test acc:" + str(test_acc) + ", time :" + str(end-self.ep_start))
+                self.ep_start = time.time()
+        
         self.current_iter += 1
 
     def train(self):
+        self.ep_start = time.time()
         for i in range(self.max_iter):
             self.train_step()
+           
+            j = i - (int(i/self.iter_per_epoch)*self.iter_per_epoch)
+            
+            if j > 0 :
+                progressbar(j, (self.iter_per_epoch-1),\
+                        'PREV.LOSS:{:10f},CUR.LOSS:{:10f}'.format(self.train_loss_list[-2],self.train_loss_list[-1]))
+
+            if (i%self.iter_per_epoch) == (self.iter_per_epoch-1):
+                print('')
 
         test_acc = self.network.accuracy(self.x_test, self.t_test)
 

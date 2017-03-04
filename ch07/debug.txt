@@ -1,0 +1,31 @@
+[28x28]                CONV1:[20x24x24]  POLL:[20x12x12]               CONV2:[40x8x8]  POOL:[40x4x4] 
+
+         W1:[20x1x5x5]                                    W2:[40x20x5x5]
+
+
+576  forward : 0.135360[s] DEBUG mode:valid, flip: 0, loop: 576, time:0.12934446334838867
+ 64  forward : 0.920449[s] DEBUG mode:valid, flip: 0, loop:  64, time:0.9114251136779785
+
+ 
+CONV2 BACKWARD
+     dC/dB   : 0.000000[s]
+ 25  dC/dW   : 0.700865[s] DEBUG mode:valid, flip: 0, loop:  25, time:0.6136329174041748
+144  W*delta : 2.675118[s] DEBUG mode:full , flip: 1, loop: 144, time:2.5026590824127197
+
+CONV1 BACKWARD
+     dC/dB   : 0.001002[s]
+ 25  dC/dW   : 0.151403[s] DEBUG mode:valid, flip: 0, loop:  25, time:0.13235187530517578
+784  W*delta : 2.436484[s] DEBUG mode:full , flip: 1, loop: 784, time:2.416431188583374
+
+
+   DEBUG mode:valid, flip: 0, loop: 576, time:0.12433099746704102, Im:(1, 2000, 28, 28),  W:(1, 2000, 5, 5)
+DEBUG mode:valid, flip: 0, loop:  64, time:0.922454833984375,   Im:(1, 80000, 12, 12), W:(1, 80000, 5, 5)
+DEBUG mode:valid, flip: 0, loop:  25, time:0.606614351272583,   Im:(1, 80000, 12, 12), W:(1, 80000, 8, 8)
+DEBUG mode:full , flip: 1, loop: 144, time:2.4505207538604736,  Im:(1, 80000, 19, 19), W:(1, 80000, 8, 8)
+DEBUG mode:valid, flip: 0, loop:  25, time:0.13034653663635254, Im:(1, 2000, 28, 28),  W:(1, 2000, 24, 24)
+   DEBUG mode:full , flip: 1, loop: 784, time:2.396378755569458,   Im:(1, 2000, 51, 51),  W:(1, 2000, 24, 24)
+
+
+
+DEBUG mode:valid, flip: 0, loop: 576, time:0.12433099746704102, Im:(1, 2000, 28, 28),  W:(1, 2000, 5, 5)
+DEBUG mode:full , flip: 1, loop: 784, time:2.396378755569458,   Im:(1, 2000, 51, 51),  W:(1, 2000, 24, 24)
